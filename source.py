@@ -14,7 +14,7 @@ window.title("MTP Client")
 
 def check_data(host: str, port: str, nick: str, password: str, image: str,
                description: str, nsfw: str) -> str:
-    """Checks if given data are valid and handles possible error."""
+    """Checks if given data are valid and handle possible error."""
 
 
     if "" in [host, port, nick, password, image, description]:
@@ -44,7 +44,7 @@ def check_data(host: str, port: str, nick: str, password: str, image: str,
 
 def send_meme(host: str, port: int, nick: str, password: str, image: str,
               description: str, nsfw: str) -> str:
-    """Connects and takes care of communication with server."""
+    """Connects and communicate with server."""
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         try:
@@ -94,7 +94,7 @@ def send_meme(host: str, port: int, nick: str, password: str, image: str,
 def data_channel(host: str, port: int, nick: str, password: str, token: str, image: str, 
         description: str, nsfw: str) -> Tuple[str, int]:
     """
-    Communicates with server in data channel, sends data.
+    Communicates with server in data channel and sends data.
     Returns data token and length of sent data.
     """
 
