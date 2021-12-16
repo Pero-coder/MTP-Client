@@ -5,30 +5,53 @@ import pynetstring
 import base64
 from typing import Tuple
 from tkinter import StringVar, Tk, ttk, filedialog, Text
-from tkinter.messagebox import showinfo
+from tkinter.messagebox import showerror, showinfo
 
 
 window = Tk()
 window.title("MTP Client")
 
 
-def check_data(host: str, port: int, nick: str, password: str, image: str, description: str, 
-               nsfw: str) -> str:
-    
-    port = int(port)
-
-    send_meme(host, port, nick, password, image, description, nsfw)
-    
+def check_data(host: str, port: str, nick: str, password: str, image: str,
+               description: str, nsfw: str) -> str:
+    """Checks if given data are valid and handles possible error."""
 
 
-def send_meme(host: str, port: int, nick: str, password: str, image: str, description: str, 
-              nsfw: str) -> str:
+    if "" in [host, port, nick, password, image, description]:
+        showerror("Unfilled entry!", "All entries has to be filled!")
+        return
+
+    if port.isdigit():
+        port = int(port)
+        if port <= 65535 and port >= 0:
+            pass
+
+        else:
+            showerror("Invalid port", "Port is invalid number!")
+            return
+    else:
+        showerror("Invalid port", "Port isn't number!")
+        return
 
     if nsfw == "":
         nsfw = "false"
 
+    try:
+        send_meme(host, int(port), nick, password, image, description, nsfw)
+    except Exception as error:
+        showerror("Send error", str(error))  
+
+
+def send_meme(host: str, port: int, nick: str, password: str, image: str,
+              description: str, nsfw: str) -> str:
+    """Connects and takes care of communication with server."""
+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((host, port))
+        try:
+            s.connect((host, port))
+        except Exception as error:
+            showerror("Connection failed", str(error))
+            return
 
         message = "C MTP V:1.0"
         s.sendall(pynetstring.encode(f"{message}"))
@@ -47,9 +70,9 @@ def send_meme(host: str, port: int, nick: str, password: str, image: str, descri
         print("<-", port.decode("utf-8"))
 
         token = pynetstring.decode(token)[0].decode("utf-8")[2:]
-        port = pynetstring.decode(port)[0].decode("utf-8")[2:]
+        d_port = pynetstring.decode(port)[0].decode("utf-8")[2:]
 
-        d_token, total_data_len = data_channel(host, port, nick, password, token,
+        d_token, total_data_len = data_channel(host, int(d_port), nick, password, token,
                 image, description, nsfw)
 
         data_len_check = s.recv(1024)
@@ -70,6 +93,10 @@ def send_meme(host: str, port: int, nick: str, password: str, image: str, descri
 
 def data_channel(host: str, port: int, nick: str, password: str, token: str, image: str, 
         description: str, nsfw: str) -> Tuple[str, int]:
+    """
+    Communicates with server in data channel, sends data.
+    Returns data token and length of sent data
+    """
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((host, port))
@@ -111,6 +138,7 @@ class GUI_client:
         self.window = window
     
     def open_file(self) -> None:
+        """Open and convert image to right format"""
         try:
             with filedialog.askopenfile(
                     "rb", 
@@ -128,6 +156,8 @@ class GUI_client:
 
 
     def main_window(self) -> None:
+        """Displays form for filling needed information"""
+
         nick = StringVar()
         nick_label = ttk.Label(self.window, text="Nick:")
         nick_entry = ttk.Entry(self.window, textvariable=nick)
@@ -174,19 +204,6 @@ class GUI_client:
                         nsfw.get().lower()), text="Send meme")
 
         send_button.grid(row=6, column=3)
-
-
-# nick = input("Nick: ")
-# password = input("Password: ")
-# description = input("Description: ")
-# nsfw = input("NSFW (true/false): ")
-# while not nsfw in ["true", "false"]:
-    # print("Invalid input! 'true' or 'false' only")
-    # nsfw = input("NSFW (true/false): ")
-# image = base64.b64encode(open(r"C:\Users\tompe\Desktop\padoru_astolfo.png", "rb").read()).decode("ascii")
-
-# send_meme(HOST, PORT, nick, password, image, description, nsfw)
-
 
 if __name__ == "__main__":
     mw = GUI_client(window)
