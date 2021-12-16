@@ -1,20 +1,31 @@
 #!/usr/bin/env python3
 
 import socket
-from typing import Tuple
 import pynetstring
 import base64
-from tkinter import StringVar, Tk, ttk
+from typing import Tuple
+from tkinter import StringVar, Tk, ttk, filedialog, Text
+from tkinter.messagebox import showinfo
 
 
 window = Tk()
 window.title("MTP Client")
 
-HOST = '159.89.4.84'  # The server's hostname or IP address
-PORT = 42069        # The port used by the server
+
+def check_data(host: str, port: int, nick: str, password: str, image: str, description: str, 
+               nsfw: str) -> str:
+    
+    port = int(port)
+
+    send_meme(host, port, nick, password, image, description, nsfw)
+    
+
 
 def send_meme(host: str, port: int, nick: str, password: str, image: str, description: str, 
               nsfw: str) -> str:
+
+    if nsfw == "":
+        nsfw = "false"
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((host, port))
@@ -38,14 +49,14 @@ def send_meme(host: str, port: int, nick: str, password: str, image: str, descri
         token = pynetstring.decode(token)[0].decode("utf-8")[2:]
         port = pynetstring.decode(port)[0].decode("utf-8")[2:]
 
-        d_token, total_data_len = data_channel(nick, password, int(port), token,
+        d_token, total_data_len = data_channel(host, port, nick, password, token,
                 image, description, nsfw)
 
-        print("total_data_len:", total_data_len)
         data_len_check = s.recv(1024)
         print("<-", data_len_check.decode("utf-8"))
         if data_len_check.decode("utf-8").find(str(total_data_len)) == -1:
-            print("Message lenght doesn't match")
+            s.sendall(pynetstring.encode("E Data length doesn't match"))
+            raise Exception("Data length didn't match length sent by server")
 
         s.sendall(pynetstring.encode(f"C {d_token}"))
         print(f"-> C {d_token}")
@@ -53,12 +64,15 @@ def send_meme(host: str, port: int, nick: str, password: str, image: str, descri
         success = s.recv(1024)
         print("<-", success.decode("utf-8"))
 
+        if success.decode().find("S ACK") != -1:
+            showinfo("Success", "Meme was successfully delivered!")
 
-def data_channel(nick: str, password: str, port: int, token: str, image: str, 
+
+def data_channel(host: str, port: int, nick: str, password: str, token: str, image: str, 
         description: str, nsfw: str) -> Tuple[str, int]:
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect((HOST, port))
+        s.connect((host, port))
 
         s.sendall(pynetstring.encode(f"C {nick}"))
         print(f"-> C {nick}")
@@ -84,39 +98,82 @@ def data_channel(nick: str, password: str, port: int, token: str, image: str,
             print("<-", check.decode("utf-8"))
             if check.decode("utf-8").find(str(len(data))) == -1:
                 s.sendall(pynetstring.encode("E Data doesn't match"))
-                raise Exception("Data lenght didn't match")
+                raise Exception("Data length didn't match")
             
             responce = s.recv(1024)
             print("<-", responce.decode("utf-8"))
 
         return (pynetstring.decode(responce)[0].decode("utf-8")[6:], total_data_len)
 
+class GUI_client:
+    def __init__(self, window: Tk) -> None:
+        self.image = ""
+        self.window = window
+    
+    def open_file(self) -> None:
+        try:
+            with filedialog.askopenfile(
+                    "rb", 
+                    defaultextension=(".png", ".jpg"),
+                    title="Choose meme"
+                    ) as file:
 
-def main_window(window: Tk) -> None:
-    nick = StringVar()
-    nick_label = ttk.Label(window, text="Nick:")
-    nick_entry = ttk.Entry(window, textvariable=nick)
-    nick_label.grid(row=0, column=0)
-    nick_entry.grid(row=0, column=1)
+                image_path_label = ttk.Label(self.window, text=f"Selected file: {file.name}")
+                image_path_label.grid(row=7, column=0, columnspan=3)
 
-    password = StringVar()
-    password_label = ttk.Label(window, text="Password:")
-    password_entry = ttk.Entry(window, textvariable=password)
-    password_label.grid(row=0, column=2)
-    password_entry.grid(row=0, column=3)
+                self.image = base64.b64encode(file.read()).decode("ascii")
+        
+        except AttributeError:
+            pass
 
-    host = StringVar()
-    host_label = ttk.Label(window, text="Host:")
-    host_entry = ttk.Entry(window, textvariable=host)
-    host_label.grid(row=1, column=0)
-    host_entry.grid(row=1, column=1)
 
-    port = StringVar()
-    port_label = ttk.Label(window, text="Port:")
-    port_entry = ttk.Entry(window, textvariable=port)
-    port_label.grid(row=1, column=2)
-    port_entry.grid(row=1, column=3)
+    def main_window(self) -> None:
+        nick = StringVar()
+        nick_label = ttk.Label(self.window, text="Nick:")
+        nick_entry = ttk.Entry(self.window, textvariable=nick)
+        nick_label.grid(row=0, column=0)
+        nick_entry.grid(row=0, column=1)
 
+        password = StringVar()
+        password_label = ttk.Label(self.window, text="Password:")
+        password_entry = ttk.Entry(window, textvariable=password)
+        password_label.grid(row=0, column=2)
+        password_entry.grid(row=0, column=3)
+
+        host = StringVar()
+        host_label = ttk.Label(self.window, text="Host:")
+        host_entry = ttk.Entry(self.window, textvariable=host)
+        host_label.grid(row=1, column=0)
+        host_entry.grid(row=1, column=1)
+
+        port = StringVar()
+        port_label = ttk.Label(self.window, text="Port:")
+        port_entry = ttk.Entry(self.window, textvariable=port)
+        port_label.grid(row=1, column=2)
+        port_entry.grid(row=1, column=3)
+
+        nsfw = StringVar()
+        nsfw_label = ttk.Label(self.window, text="NSFW:")
+        nsfw_button = ttk.Checkbutton(self.window, variable=nsfw, onvalue="true", offvalue="false")
+        nsfw_label.grid(row=2, column=0)
+        nsfw_button.grid(row=2, column=1, sticky="W")
+
+        description_label = ttk.Label(self.window, text="Description:")
+        description = Text(window, height=5, width=50, font="Calibri")
+        description_label.grid(row=3, column=0)
+        description.grid(row=4, column=0, rowspan=2, columnspan=4)
+
+
+        select_image = ttk.Button(self.window, text="Select meme", command=self.open_file)
+        select_image.grid(row=6, column=0)
+
+        send_button = ttk.Button(
+                window, 
+                command=lambda: check_data(host.get(), port.get(), nick.get(), 
+                        password.get(), self.image, description.get(1.0, "end-1c"), 
+                        nsfw.get().lower()), text="Send meme")
+
+        send_button.grid(row=6, column=3)
 
 
 # nick = input("Nick: ")
@@ -132,5 +189,6 @@ def main_window(window: Tk) -> None:
 
 
 if __name__ == "__main__":
-    main_window(window)
+    mw = GUI_client(window)
+    mw.main_window()
     window.mainloop()
