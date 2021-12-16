@@ -95,7 +95,7 @@ def data_channel(host: str, port: int, nick: str, password: str, token: str, ima
         description: str, nsfw: str) -> Tuple[str, int]:
     """
     Communicates with server in data channel, sends data.
-    Returns data token and length of sent data
+    Returns data token and length of sent data.
     """
 
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -138,7 +138,7 @@ class GUI_client:
         self.window = window
     
     def open_file(self) -> None:
-        """Open and convert image to right format"""
+        """Open and convert image to right format."""
         try:
             with filedialog.askopenfile(
                     "rb", 
@@ -156,7 +156,7 @@ class GUI_client:
 
 
     def main_window(self) -> None:
-        """Displays form for filling needed information"""
+        """Displays form for filling needed information."""
 
         nick = StringVar()
         nick_label = ttk.Label(self.window, text="Nick:")
